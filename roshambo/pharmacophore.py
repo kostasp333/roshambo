@@ -8,7 +8,10 @@ import matplotlib.image as img
 import matplotlib.pyplot as plt
 
 from cairosvg import svg2png
-from IPython.display import SVG
+try:
+    from IPython.display import SVG
+except ImportError:
+    SVG = None
 from collections import defaultdict
 
 from rdkit import Chem
@@ -210,7 +213,8 @@ def draw_pharm(rdkit_mol, features, filename="pharm.jpg", working_dir=None):
     )
     drawer.FinishDrawing()
     svg = drawer.GetDrawingText().replace("svg:", "")
-    SVG(svg)
+    if SVG is not None:
+        SVG(svg)
     with open(f"{working_dir}/pharm.svg", "w") as f:
         f.write(svg)
 

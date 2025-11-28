@@ -5,6 +5,12 @@ import setuptools
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
+try:
+    from Cython.Build import cythonize
+    HAS_CYTHON = True
+except ImportError:
+    HAS_CYTHON = False
+
 
 # module_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,7 +41,7 @@ CCFLAGS = [
     "-DNO_DIV_ADDRESS",
     # "-D_GLIBCXX_USE_CXX11_ABI=0",  # comment
 ]
-PTXFLAGS = ["-Xcompiler", "-O2", "-arch", "sm_50", "-Xptxas", "-v"]
+PTXFLAGS = ["-Xcompiler", "-O2", "-arch", "sm_80", "-Xptxas", "-v"]
 LDFLAGS = [
     f"-L{RDKIT_LIB_DIR}",
 ]
@@ -46,11 +52,17 @@ def locate_cuda():
     if not home:
         raise Exception("CUDA_HOME environment variable not set.")
     nvcc = os.path.join(home, "bin", "nvcc")
+
+    # Check for lib64 first (standard CUDA), then lib (conda CUDA)
+    lib_dir = os.path.join(home, "lib64")
+    if not os.path.exists(lib_dir):
+        lib_dir = os.path.join(home, "lib")
+
     cudaconfig = {
         "home": home,
         "nvcc": nvcc,
         "include": os.path.join(home, "include"),
-        "lib64": os.path.join(home, "lib64"),
+        "lib64": lib_dir,
     }
     for k, v in iter(cudaconfig.items()):
         if not os.path.exists(v):
@@ -69,22 +81,6 @@ def customize_compiler_for_nvcc(self):
         if os.path.splitext(src)[1] == ".cu":
             self.set_executable("compiler_so", CUDA["nvcc"])
             postargs = extra_postargs["nvcc"]
-        elif src == os.path.join(
-            "roshambo", "cpaper.cpp"
-        ):  # os.path.join(module_dir, "roshambo", "cpaper.cpp"):
-            self.set_executable("compiler_so", CUDA["nvcc"])
-            postargs = [
-                f"-I{RDKIT_INCLUDE_DIR}",
-                "-x",
-                "cu",
-                "-std=c++17",
-                "-arch=sm_70",
-                # "-D_GLIBCXX_USE_CXX11_ABI=0",  # comment
-                "--ptxas-options=-v",
-                "-c",
-                "--compiler-options",
-                "-fPIC",
-            ]
         else:
             postargs = extra_postargs["gcc"]
 
@@ -108,6 +104,7 @@ ext = Extension(
         os.path.join(
             "roshambo", "cpaper.pyx"
         ),  # os.path.join(module_dir, "roshambo", "cpaper.pyx"),
+        os.path.join(PAPER_DIR, "paper.cu"),
         os.path.join(PAPER_DIR, "deviceAnalyticVolume.cu"),
         os.path.join(PAPER_DIR, "hostAnalyticVolume.cu"),
         os.path.join(PAPER_DIR, "deviceOverlay.cu"),
@@ -170,6 +167,7 @@ setuptools.setup(
     python_requires=">=3.7",
     include_package_data=True,
     package_data={"roshambo": ["roshambo/*.cpython*.so"]},
-    ext_modules=[ext],
+    ext_modules=cythonize([ext], language_level="3") if HAS_CYTHON else [ext],
     cmdclass={"build_ext": CustomBuildExt},
+    setup_requires=["Cython>=0.29.0"],
 )

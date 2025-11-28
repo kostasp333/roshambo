@@ -12,7 +12,7 @@ cdef extern from "GraphMol/ROMol.h" namespace "RDKit":
         ROMol(const string&) except +
         void clear()
 
-cdef extern from "../paper/paper.cu": # f"../paper/paper.cu":
+cdef extern from "../paper/paper.h":
     float** paper(int gpuID, list[ROMol*]& molecules)
 
 

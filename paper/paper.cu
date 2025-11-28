@@ -185,7 +185,7 @@ extern "C" float** paper(int gpuID, list<RDKit::ROMol*>& molecules) {
             // Copy results back
             cudaMemcpy(hostDeviceTransforms,devFitMM.transforms,nfitmols*transform_pitch*sizeof(float),cudaMemcpyDeviceToHost);
             //cudaMemcpy(hostDeviceOverlaps,deviceOverlaps,nfitmols*sizeof(float),cudaMemcpyDeviceToHost);
-            cudaThreadSynchronize();
+            cudaDeviceSynchronize();
             memset(bestOverlaps,0,distinctMols*sizeof(float));
             for (uint i = 0; i < totalMols; i++) {
                 uint molid = molids[i];
